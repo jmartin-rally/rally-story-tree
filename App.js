@@ -24,7 +24,6 @@ Ext.define('CustomApp', {
             limit: Infinity,
             listeners: {
                 load: function(store,data,success) {
-                    console.log( data );
                     var records = [];
                     var record_hash = {};
                     
@@ -34,9 +33,11 @@ Ext.define('CustomApp', {
                             text: record.data.FormattedID + ": " + record.data.Name,
                             _ref: record.data._ref,
                             icon: that.typeMap[ record.data._type].icon,
-                            leaf: true,
+                            leaf: false,
                             allowDrop: true,
+                            allowDrag: true,
                             data: { item: record.data },
+                            ObjectID: record.data.ObjectID,
                             children: []
                         };
                         record_hash[ record.data._ref ] = tree_item;
@@ -44,11 +45,8 @@ Ext.define('CustomApp', {
                     
                     // hook up children
                     Ext.Object.each( record_hash, function(key,parent ) { 
-                        console.log( key, parent );
                         var children = [];
-                        Ext.Array.each( parent.data.item.Children, function( record ) {
-                            parent.leaf = false; 
-                            
+                        Ext.Array.each( parent.data.item.Children, function( record ) {                            
                             if ( record_hash[ record._ref ] ) {
                                 record_hash[ record._ref ].isChild = true;
                                 children.push( record_hash[ record._ref ] ) ;
@@ -59,6 +57,7 @@ Ext.define('CustomApp', {
                                     _ref: record._ref,
                                     leaf: true,
                                     allowDrop: false,
+                                    allowDrag: false,
                                     data: { item: record },
                                     children: []
                                 });
@@ -73,9 +72,7 @@ Ext.define('CustomApp', {
                     Ext.Array.each( records, function( record ) {
                         if ( ! record.isChild ) { clean_records.push( record ); }
                     });
-                    
-                    console.log( records );
-                    
+                                        
                     Ext.define( 'ArtifactTreeNodes', {
                         extend: 'Ext.data.Model',
                         fields: [
@@ -83,7 +80,9 @@ Ext.define('CustomApp', {
                             { name: 'leaf', type: 'boolean' },
                             { name: 'icon', type: 'string' },
                             { name: 'allowDrop', type: 'boolean' },
-                            { name: '_ref', type: 'string' }
+                            { name: 'allowDrag', type: 'boolean' },
+                            { name: '_ref', type: 'string' },
+                            { name: 'ObjectID', type: 'int' }
                         ]
                     } );
                     
@@ -107,9 +106,48 @@ Ext.define('CustomApp', {
     _displayTree: function(store) {
         this.artifact_tree = Ext.create('Ext.tree.Panel', {
             store: store,
-            rootVisible: false
+            rootVisible: false,
+            viewConfig: {
+                plugins: {
+                    ptype: 'treeviewdragdrop'
+                },
+                copy: false,
+                listeners: {
+                    drop: this._onDrop,
+                    scope: this
+                }
+            }
         });
         this.down('#artifacts').add( this.artifact_tree );
         this.wait.hide();
+    },
+    _onDrop: function( node, data, overModel, dropPosition ) {
+        var moved_item = data.view.getRecord( data.item ).data;
+        var new_parent = overModel.data;
+        
+        Rally.data.ModelFactory.getModel({
+            type: 'User Story',
+            success: function( us_model ) {
+                us_model.load( moved_item.ObjectID, {
+                    fetch: [ 'FormattedID','Parent' ],
+                    callback: function(record,operation) {
+                        if ( operation.wasSuccessful() ) {
+                            record.set( 'Parent', new_parent );
+                            record.save({
+                                callback: function(result,operation) {
+                                    if ( operation.wasSuccessful() ) {
+                                        //
+                                    } else {
+                                        Ext.Msg.alert('Problem Moving Record', operation.error.errors[0] );
+                                        console.log( operation );
+                                    }
+                                }
+                            });
+                            console.log( record );
+                        }
+                    }
+                });
+            }
+        });
     }
 });
