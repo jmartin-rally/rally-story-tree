@@ -55,10 +55,8 @@
                                 Ext.Object.each( record_hash, function(key,item) {
                                     if ( item.data.item.Parent ) {
                                         if ( ! record_hash[ item.data.item.Parent._ref ] ) {
-                                            console.log( "Constructing a parent holder" );
                                             var parent = item.data.item.Parent;
                                             parent.Children = [item];
-                                            console.log( parent.Children );
                                             record_hash[ item.data.item.Parent._ref ] = {
                                                 outOfScope: true,
                                                 isChild: false,
