@@ -51,7 +51,30 @@
                                     };
                                     record_hash[ record.data._ref ] = tree_item;
                                 });
-                                
+                                // make holders for out-of-scope parents
+                                Ext.Object.each( record_hash, function(key,item) {
+                                    if ( item.data.item.Parent ) {
+                                        if ( ! record_hash[ item.data.item.Parent._ref ] ) {
+                                            console.log( "Constructing a parent holder" );
+                                            var parent = item.data.item.Parent;
+                                            parent.Children = [item];
+                                            console.log( parent.Children );
+                                            record_hash[ item.data.item.Parent._ref ] = {
+                                                outOfScope: true,
+                                                isChild: false,
+                                                text: "out of scope item",
+                                                _ref: item.data.item.Parent._ref,
+                                                leaf: false,
+                                                allowDrop: false,
+                                                allowDrag: false,
+                                                data: { item: item.data.item.Parent },
+                                                children: []
+                                            };
+                                        } else if ( record_hash[ item.data.item.Parent._ref ].outOfScope ) {
+                                            record_hash[item.data.item.Parent._ref].data.item.Children.push(item);
+                                        }
+                                    }
+                                });
                                 // hook up children
                                 Ext.Object.each( record_hash, function(key,parent ) { 
                                     var children = [];
